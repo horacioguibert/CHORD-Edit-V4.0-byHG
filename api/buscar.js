@@ -5,8 +5,8 @@ export default async function handler(req, res) {
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    // Usamos el modelo 'gemini-1.5-flash' que es el pilar de Google AI Studio
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Usamos el modelo '8b' (8 billion) que es el caballito de batalla gratuito
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -14,8 +14,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `Actúa como experto musical. Genera el cifrado de "${query}". 
-            Responde SOLO con un JSON válido:
+            text: `Genera el cifrado de "${query}". Responde SOLO con un JSON:
             {"titulo":"X","artista":"X","compas":"4/4","secciones":[{"label":"ESTROFA","compases":[{"beats":[{"chord":"G","note":""}],"lyric":"letra"}]}]}`
           }]
         }]
@@ -23,6 +22,8 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
+    
+    // Si Google responde con un error de modelo, lo vamos a capturar aquí
     if (data.error) throw new Error(data.error.message);
 
     const txt = data.candidates[0].content.parts[0].text;
