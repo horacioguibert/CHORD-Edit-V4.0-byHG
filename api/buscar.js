@@ -5,8 +5,8 @@ export default async function handler(req, res) {
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    // Esta es la URL universal para 2026 que no falla con cuentas personales
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
+    // Usamos el modelo de última generación 2.0 que es el estándar actual
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -14,7 +14,8 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `Genera el cifrado de la canción "${query}". Responde SOLO con un JSON válido:
+            text: `Actúa como experto musical. Genera el cifrado de "${query}". 
+            Responde SOLO con un JSON válido (sin texto extra ni marcas de código):
             {"titulo":"X","artista":"X","compas":"4/4","secciones":[{"label":"ESTROFA","compases":[{"beats":[{"chord":"G","note":""}],"lyric":"letra"}]}]}`
           }]
         }]
