@@ -5,7 +5,8 @@ export default async function handler(req, res) {
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Cambiamos v1beta por v1 para máxima compatibilidad
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -23,22 +24,19 @@ export default async function handler(req, res) {
 
     const data = await response.json();
     
-    // Verificamos si Google devolvió un error de cuota o clave
     if (data.error) throw new Error(data.error.message);
 
-    // Esta es la parte sensible que corregimos:
     const candidate = data.candidates?.[0];
-    if (!candidate) throw new Error("Google no encontró resultados para esta búsqueda.");
+    if (!candidate) throw new Error("No se encontraron resultados en Google AI.");
     
     let txt = candidate.content.parts[0].text;
     
-    // Limpiamos el texto por si Gemini puso etiquetas de ```json ... ```
+    // Limpieza de posibles etiquetas Markdown
     txt = txt.replace(/```json/g, "").replace(/```/g, "").trim();
     
     const json = JSON.parse(txt);
     return res.status(200).json(json);
   } catch (e) {
-    console.error("Error detallado:", e);
     return res.status(500).json({ error: "Error en el buscador: " + e.message });
   }
 }
