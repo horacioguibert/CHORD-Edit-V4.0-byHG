@@ -5,8 +5,8 @@ export default async function handler(req, res) {
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    // Usamos el modelo de última generación 2.0 que es el estándar actual
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    // Usamos el modelo Lite que tiene 500 búsquedas diarias según tu tablero
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -14,8 +14,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `Actúa como experto musical. Genera el cifrado de "${query}". 
-            Responde SOLO con un JSON válido (sin texto extra ni marcas de código):
+            text: `Genera el cifrado de la canción "${query}". Responde SOLO con un JSON válido:
             {"titulo":"X","artista":"X","compas":"4/4","secciones":[{"label":"ESTROFA","compases":[{"beats":[{"chord":"G","note":""}],"lyric":"letra"}]}]}`
           }]
         }]
