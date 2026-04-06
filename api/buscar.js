@@ -5,8 +5,8 @@ export default async function handler(req, res) {
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    // Usamos el modelo más actualizado y estable: gemini-1.5-flash-latest
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+    // Esta es la URL que funciona con la mayoría de las claves personales de AI Studio
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -14,10 +14,10 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `Genera el cifrado musical de la canción "${query}". 
-            Responde ÚNICAMENTE con un JSON válido con esta estructura exacta:
+            text: `Actúa como un experto musical. Genera el cifrado completo de la canción "${query}". 
+            Responde ÚNICAMENTE con un JSON válido con esta estructura:
             {"titulo":"X","artista":"X","compas":"4/4","secciones":[{"label":"ESTROFA","compases":[{"beats":[{"chord":"G","note":""}],"lyric":"letra"}]}]}
-            Usa nombres de acordes estándar (Am7, Gmaj7, etc.). Sin texto extra.`
+            No incluyas texto extra, solo el JSON.`
           }]
         }]
       })
@@ -25,13 +25,15 @@ export default async function handler(req, res) {
 
     const data = await response.json();
     
-    if (data.error) {
-      throw new Error(data.error.message);
+    if (data.error) throw new Error(data.error.message);
+
+    if (!data.candidates || data.candidates.length === 0) {
+      throw new Error("No se encontraron resultados para esa canción.");
     }
 
     const txt = data.candidates[0].content.parts[0].text;
     
-    // Filtro de seguridad para limpiar el JSON
+    // Limpieza de cualquier residuo de texto
     const inicio = txt.indexOf('{');
     const fin = txt.lastIndexOf('}') + 1;
     const jsonLimpio = txt.substring(inicio, fin);
