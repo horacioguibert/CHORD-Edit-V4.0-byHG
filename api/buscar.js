@@ -5,8 +5,8 @@ export default async function handler(req, res) {
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    // Cambiamos 'v1beta' por 'v1' y el modelo al estándar global
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Esta es la URL 'v1beta' con el modelo 'gemini-2.0-flash' (la joya de 2026)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -23,6 +23,7 @@ export default async function handler(req, res) {
 
     const data = await response.json();
     
+    // Si hay un error, lo mostramos directo para saber qué dice Google ahora
     if (data.error) throw new Error(data.error.message);
 
     const txt = data.candidates[0].content.parts[0].text;
