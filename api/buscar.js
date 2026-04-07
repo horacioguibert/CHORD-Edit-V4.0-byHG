@@ -1,35 +1,28 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido" });
-  
-  const { query } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY; 
-
-  // RUTA DE EMERGENCIA: Usamos 'gemini-1.5-flash-latest'
-  // Este es el "comodín" que obliga a Google a buscar cualquier versión de Flash que tenga en stock
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
+  
+  // ESCÁNER TÉCNICO: Interrogamos a la fábrica para ver qué modelos nos dejan usar
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`;
 
   try {
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: `Actúa como experto musical. Genera el JSON (titulo, artista, compas, capo, secciones) de la canción: ${query}. Responde ÚNICAMENTE el objeto JSON puro.` }] }]
-      })
-    });
-
+    const response = await fetch(API_URL);
     const data = await response.json();
 
     if (data.error) {
-      // Si el 404 persiste aquí, el problema es que su API KEY no tiene permiso de 'Generative Language'
-      return res.status(data.error.code || 500).json({ error: `Fallo de Fábrica (${data.error.code}): ${data.error.message}` });
+      return res.status(data.error.code || 500).json({ 
+        error: `ERROR DE ACCESO: ${data.error.message}. Esto confirma que su API KEY no tiene permisos.` 
+      });
     }
 
-    const txt = data.candidates[0].content.parts[0].text;
-    const jsonMatch = txt.match(/\{[\s\S]*\}/);
+    // EXTRAEMOS SOLO LOS NOMBRES DE LOS MODELOS DISPONIBLES
+    const modelosDisponibles = data.models.map(m => m.name.replace('models/', ''));
     
-    return res.status(200).json(JSON.parse(jsonMatch[0]));
+    return res.status(200).json({
+      mensaje: "INVENTARIO ENCONTRADO",
+      modelos_que_si_funcionan: modelosDisponibles
+    });
 
   } catch (e) {
-    return res.status(500).json({ error: "Falla de Motor: " + e.message });
+    return res.status(500).json({ error: "Falla de Comunicación: " + e.message });
   }
 }
