@@ -4,26 +4,29 @@ export default async function handler(req, res) {
   const { query } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY; 
 
-  // RUTA DE ALTA PRECISIÓN: Usamos el ID de modelo gemini-1.5-flash-8b (u otros derivados)
-  // que son los que Google está activando primero en cuentas de Nivel 1 en Argentina.
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  // ACTUALIZACIÓN DE PIEZA: gemini-1.5-flash-8b
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${API_KEY}`;
 
   try {
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `Genera el JSON de la canción: ${query}. Responde SOLO el JSON.` }] }]
+        contents: [{ parts: [{ text: `Actúa como experto musical. Genera el JSON (titulo, artista, compas, capo, secciones) de la canción: ${query}. Responde ÚNICAMENTE el objeto JSON puro.` }] }]
       })
     });
 
     const data = await response.json();
 
-    // Si el modelo específico falla, el sistema nos devolverá la LISTA real en el error
     if (data.error) {
+      // Si este modelo también falla, el mensaje nos dirá exactamente cuál es la pieza que sí tiene en stock
       return res.status(data.error.code || 500).json({ 
-        error: `Google API Error: ${data.error.message}. Intente cambiar el modelo en el código por 'gemini-1.5-flash-8b' si este falla.` 
+        error: `Error de Inventario Google: ${data.error.message}` 
       });
+    }
+
+    if (!data.candidates || !data.candidates[0]) {
+      throw new Error("El motor respondió vacío. Revise la cuota.");
     }
 
     const txt = data.candidates[0].content.parts[0].text;
@@ -32,6 +35,6 @@ export default async function handler(req, res) {
     return res.status(200).json(JSON.parse(jsonMatch[0]));
 
   } catch (e) {
-    return res.status(500).json({ error: "Falla de Motor: " + e.message });
+    return res.status(500).json({ error: "Falla Crítica de Motor: " + e.message });
   }
 }
