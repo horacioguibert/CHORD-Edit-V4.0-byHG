@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   const { query } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY; 
 
-  // RUTA DE PRODUCCIÓN QUE ACABAMOS DE VALIDAR
+  // RUTA DE PRODUCCIÓN VALIDADA POR EL ESCÁNER
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
   try {
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ 
-          parts: [{ text: `Actúa como experto musical. Genera el cifrado (título, artista, compás, capo, secciones) de la canción: ${query}. Responde ÚNICAMENTE el objeto JSON puro, sin decoraciones markdown.` }] 
+          parts: [{ text: `Genera el JSON (titulo, artista, compas, capo, secciones) de la canción: ${query}. Responde SOLO el objeto JSON puro.` }] 
         }]
       })
     });
@@ -24,13 +24,12 @@ export default async function handler(req, res) {
       throw new Error(data.error.message);
     }
 
-    // Limpieza de la respuesta para asegurar que solo pase el JSON
-    let txt = data.candidates[0].content.parts[0].text;
+    // Limpieza de seguridad para asegurar que la web reciba solo el JSON
+    const txt = data.candidates[0].content.parts[0].text;
     const jsonMatch = txt.match(/\{[\s\S]*\}/);
     
     if (!jsonMatch) throw new Error("La IA no entregó un formato de datos compatible.");
     
-    // Devolvemos el JSON limpio que su Web "OnlyChords" necesita para mostrar la canción
     return res.status(200).json(JSON.parse(jsonMatch[0]));
 
   } catch (e) {
