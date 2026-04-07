@@ -4,17 +4,16 @@ export default async function handler(req, res) {
   const { query } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY; 
 
-  // CAMBIO CRÍTICO: Usamos v1beta y el modelo flash sin sufijos
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  // RUTA DE COMPATIBILIDAD TOTAL: Usamos la v1beta con el modelo gemini-1.5-flash-latest
+  // Este identificador fuerza a Google a buscar el motor más reciente disponible para su cuenta.
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
 
   try {
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ 
-          parts: [{ text: `Dame el JSON musical de: ${query}. Responde SOLO el JSON puro.` }] 
-        }]
+        contents: [{ parts: [{ text: `Genera el JSON de la canción: ${query}. Responde SOLO el JSON puro.` }] }]
       })
     });
 
