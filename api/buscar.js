@@ -4,8 +4,8 @@ export default async function handler(req, res) {
   const { query } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY; 
 
-  // RUTA DE PRODUCCIÓN VALIDADA POR EL ESCÁNER
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  // RUTA ESTÁNDAR DE PRODUCCIÓN FINAL
+  const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
   try {
     const response = await fetch(API_URL, {
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ 
-          parts: [{ text: `Genera el JSON (titulo, artista, compas, capo, secciones) de la canción: ${query}. Responde SOLO el objeto JSON puro.` }] 
+          parts: [{ text: `Actúa como experto musical. Genera el JSON (titulo, artista, compas, capo, secciones) de la canción: ${query}. Responde ÚNICAMENTE el objeto JSON puro.` }] 
         }]
       })
     });
@@ -21,14 +21,12 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (data.error) {
-      throw new Error(data.error.message);
+      // Si esto falla, el mensaje será el oficial de Google para su cuenta
+      return res.status(data.error.code || 500).json({ error: `Google API (${data.error.code}): ${data.error.message}` });
     }
 
-    // Limpieza de seguridad para asegurar que la web reciba solo el JSON
     const txt = data.candidates[0].content.parts[0].text;
     const jsonMatch = txt.match(/\{[\s\S]*\}/);
-    
-    if (!jsonMatch) throw new Error("La IA no entregó un formato de datos compatible.");
     
     return res.status(200).json(JSON.parse(jsonMatch[0]));
 
