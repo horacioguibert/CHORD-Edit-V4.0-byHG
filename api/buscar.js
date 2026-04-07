@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0.1, // Precisión máxima para no inventar acordes raros
+          temperature: 0.1, // Precisión máxima para evitar errores armónicos
           maxOutputTokens: 4000
         }
       })
