@@ -5,7 +5,8 @@ export default async function handler(req, res) {
   if (!query) return res.status(400).json({ error: "Falta el parámetro de búsqueda" });
 
   const API_KEY = process.env.GEMINI_API_KEY; 
-  // CAMBIO CRÍTICO: Usamos la ruta directa de modelos para evitar conflictos de versión
+  
+  // CAMBIO CRÍTICO: Usamos la ruta directa de modelos v1 con el nombre oficial del motor
   const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
   const prompt = `Actúa como un experto en música. Proporciona el cifrado de: "${query}". 
@@ -36,7 +37,7 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    // Si el error persiste, esto nos dirá exactamente por qué
+    // Si el error persiste, esto nos dirá exactamente el código de error de Google
     if (data.error) {
       throw new Error(`Código ${data.error.code}: ${data.error.message}`);
     }
