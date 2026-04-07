@@ -4,25 +4,29 @@ export default async function handler(req, res) {
   const { query } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY; 
 
-  // RUTA UNIVERSAL DE PRODUCCIÓN (v1) - El modelo que Google te habilitó
-  const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  // RUTA DE COMPATIBILIDAD TOTAL (v1beta)
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
   try {
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `Genera el JSON musical de la canción: ${query}. Responde SOLO el JSON: {"titulo":"X","artista":"X","compas":"4/4","capo":0,"secciones":[{"label":"ESTROFA","compases":[{"beats":[{"chord":"G","note":""}],"lyric":"letra"}]}]}` }] }]
+        contents: [{ parts: [{ text: `Actúa como experto musical. Dame el cifrado (título, artista, compás, secciones con acordes y letra) de: ${query}. Responde ÚNICAMENTE el objeto JSON puro.` }] }]
       })
     });
 
     const data = await response.json();
     
-    // Si Google rechaza, esto nos dirá por qué (sin códigos genéricos)
-    if (data.error) throw new Error(data.error.message);
+    // Si Google rechaza, esto nos dirá la razón exacta en pantalla
+    if (data.error) {
+      throw new Error(`Google dice: ${data.error.message} (Código ${data.error.code})`);
+    }
 
     const txt = data.candidates[0].content.parts[0].text;
     const jsonMatch = txt.match(/\{[\s\S]*\}/);
+    
+    if (!jsonMatch) throw new Error("La IA no devolvió un formato JSON válido.");
     
     return res.status(200).json(JSON.parse(jsonMatch[0]));
 
