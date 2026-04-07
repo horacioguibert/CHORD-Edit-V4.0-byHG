@@ -1,33 +1,36 @@
 export default async function handler(req, res) {
-  // 1. Control de acceso al motor
-  if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido" });
+  // 1. Control de acceso: Solo permitimos pedidos POST
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Método no permitido" });
+  }
   
   const { query } = req.body;
-  if (!query) return res.status(400).json({ error: "Falta el parámetro de búsqueda" });
+  if (!query) {
+    return res.status(400).json({ error: "Falta el parámetro de búsqueda" });
+  }
 
-  // 2. Suministro de Energía (Variable de entorno para seguridad)
+  // 2. Configuración de Energía de Pago (Versión estable v1)
   const API_KEY = process.env.GEMINI_API_KEY; 
   const MODEL = "gemini-1.5-flash"; 
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
+  const API_URL = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${API_KEY}`;
 
-  // 3. El "Blueprint" (Instrucciones precisas para la IA)
-  const prompt = `Actúa como un experto en transcripción musical y cifrado. 
-  Proporciona el cifrado completo de la canción: "${query}". 
-  Es vital que identifiques estrofas, estribillos y coloques los acordes en sus compases correspondientes.
+  // 3. Instrucciones de Estructura Musical para la IA
+  const prompt = `Actúa como un experto en transcripción musical. 
+  Genera el cifrado completo de la canción: "${query}". 
   
-  Responde ÚNICAMENTE con un objeto JSON válido, sin texto extra ni comentarios, con esta estructura:
+  Debes responder ÚNICAMENTE con un objeto JSON válido, sin texto adicional, siguiendo esta estructura exacta:
   {
-    "titulo": "Nombre real de la canción",
+    "titulo": "Nombre de la canción",
     "artista": "Nombre del artista",
     "compas": "4/4",
     "capo": 0,
     "secciones": [
       {
-        "label": "INTRO / ESTROFA / CORO",
+        "label": "ESTROFA",
         "compases": [
           {
-            "beats": [{"chord": "Acorde", "note": ""}],
-            "lyric": "fragmento de letra correspondiente"
+            "beats": [{"chord": "G", "note": ""}],
+            "lyric": "Letra de este compás"
           }
         ]
       }
@@ -41,33 +44,36 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0.1, // Baja temperatura para máxima precisión estructural
-          topP: 0.95,
-          topK: 64,
-          maxOutputTokens: 4096,
+          temperature: 0.1, // Precisión máxima para no inventar acordes raros
+          maxOutputTokens: 4000
         }
       })
     });
 
     const data = await response.json();
 
+    // Verificación de Suministro: Si Google rechaza la llave o el modelo
     if (data.error) {
-      throw new Error(`Error de API: ${data.error.message}`);
+      throw new Error(`Error de Google API: ${data.error.message}`);
     }
 
-    // 4. Control de Calidad: Extraer y limpiar el JSON
+    // 4. Limpieza de datos: Extraer el JSON del bloque de texto de la IA
     let txt = data.candidates[0].content.parts[0].text;
     const jsonMatch = txt.match(/\{[\s\S]*\}/);
     
-    if (!jsonMatch) throw new Error("La IA no devolvió un formato compatible");
+    if (!jsonMatch) {
+      throw new Error("La IA no entregó un formato JSON válido");
+    }
     
-    const cancionFinal = JSON.parse(jsonMatch[0]);
+    const cancionProcesada = JSON.parse(jsonMatch[0]);
     
-    // Enviar a la planilla App.jsx
-    return res.status(200).json(cancionFinal);
+    // 5. Envío exitoso a la planilla App.jsx
+    return res.status(200).json(cancionProcesada);
 
   } catch (e) {
-    console.error("Falla en el buscador:", e.message);
-    return res.status(500).json({ error: "Falla de conexión: " + e.message });
+    console.error("Falla Crítica:", e.message);
+    return res.status(500).json({ 
+      error: "Error en el motor de búsqueda: " + e.message 
+    });
   }
 }
