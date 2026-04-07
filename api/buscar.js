@@ -1,28 +1,39 @@
 export default async function handler(req, res) {
-  const API_KEY = process.env.GEMINI_API_KEY; 
+  if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido" });
   
-  // ESCÁNER TÉCNICO: Interrogamos a la fábrica para ver qué modelos nos dejan usar
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`;
+  const { query } = req.body;
+  const API_KEY = process.env.GEMINI_API_KEY; 
+
+  // RUTA DE PRODUCCIÓN QUE ACABAMOS DE VALIDAR
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
   try {
-    const response = await fetch(API_URL);
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ 
+          parts: [{ text: `Actúa como experto musical. Genera el cifrado (título, artista, compás, capo, secciones) de la canción: ${query}. Responde ÚNICAMENTE el objeto JSON puro, sin decoraciones markdown.` }] 
+        }]
+      })
+    });
+
     const data = await response.json();
 
     if (data.error) {
-      return res.status(data.error.code || 500).json({ 
-        error: `ERROR DE ACCESO: ${data.error.message}. Esto confirma que su API KEY no tiene permisos.` 
-      });
+      throw new Error(data.error.message);
     }
 
-    // EXTRAEMOS SOLO LOS NOMBRES DE LOS MODELOS DISPONIBLES
-    const modelosDisponibles = data.models.map(m => m.name.replace('models/', ''));
+    // Limpieza de la respuesta para asegurar que solo pase el JSON
+    let txt = data.candidates[0].content.parts[0].text;
+    const jsonMatch = txt.match(/\{[\s\S]*\}/);
     
-    return res.status(200).json({
-      mensaje: "INVENTARIO ENCONTRADO",
-      modelos_que_si_funcionan: modelosDisponibles
-    });
+    if (!jsonMatch) throw new Error("La IA no entregó un formato de datos compatible.");
+    
+    // Devolvemos el JSON limpio que su Web "OnlyChords" necesita para mostrar la canción
+    return res.status(200).json(JSON.parse(jsonMatch[0]));
 
   } catch (e) {
-    return res.status(500).json({ error: "Falla de Comunicación: " + e.message });
+    return res.status(500).json({ error: "Falla de Motor: " + e.message });
   }
 }
