@@ -6,8 +6,8 @@ export default async function handler(req, res) {
 
   const API_KEY = process.env.GEMINI_API_KEY; 
   
-  // CAMBIO CRÍTICO: Usamos la ruta directa de modelos v1 con el nombre oficial del motor
-  const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  // AJUSTE DE PRECISIÓN: Volvemos a v1beta que es la ruta que tu cuenta está solicitando
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
   const prompt = `Actúa como un experto en música. Proporciona el cifrado de: "${query}". 
   Responde ÚNICAMENTE con un JSON válido:
@@ -37,9 +37,9 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    // Si el error persiste, esto nos dirá exactamente el código de error de Google
     if (data.error) {
-      throw new Error(`Código ${data.error.code}: ${data.error.message}`);
+      // Si vuelve a fallar, este mensaje nos dará el último detalle técnico
+      throw new Error(`Google dice: ${data.error.message} (Código ${data.error.code})`);
     }
 
     let txt = data.candidates[0].content.parts[0].text;
