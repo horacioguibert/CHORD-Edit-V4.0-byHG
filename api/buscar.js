@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   const { query } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY; 
 
-  // RUTA DE PRODUCCIÓN PURA (Sin versiones beta, sin nombres variables)
+  // RUTA ESTABLE v1
   const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
   try {
@@ -13,10 +13,10 @@ export default async function handler(req, res) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ 
-          parts: [{ text: `Genera el cifrado musical de: ${query}. Responde estrictamente un JSON con titulo, artista, compas, capo y secciones.` }] 
+          parts: [{ text: `Actúa como experto musical. Genera el cifrado (título, artista, compás, capo, secciones) de la canción: ${query}. Responde ÚNICAMENTE el objeto JSON puro, sin decoraciones de texto ni markdown.` }] 
         }],
         generationConfig: {
-          response_mime_type: "application/json" // Fuerza a la IA a entregar solo datos
+          temperature: 0.1 // Eliminamos el campo que causaba el error y bajamos temperatura para precisión
         }
       })
     });
@@ -24,12 +24,16 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (data.error) {
-      // Si esto falla, el mensaje de Google dirá exactamente qué falta en tu consola
       return res.status(data.error.code || 500).json({ error: `Google API: ${data.error.message}` });
     }
 
-    const respuestaIA = data.candidates[0].content.parts[0].text;
-    return res.status(200).json(JSON.parse(respuestaIA));
+    // Limpieza manual del JSON por si la IA agrega texto extra
+    let txt = data.candidates[0].content.parts[0].text;
+    const jsonMatch = txt.match(/\{[\s\S]*\}/);
+    
+    if (!jsonMatch) throw new Error("La IA no entregó un formato de datos válido.");
+    
+    return res.status(200).json(JSON.parse(jsonMatch[0]));
 
   } catch (e) {
     return res.status(500).json({ error: "Falla de Motor: " + e.message });
