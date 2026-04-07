@@ -4,29 +4,28 @@ export default async function handler(req, res) {
   const { query } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY; 
 
-  // RUTA DE PRODUCCIÓN FINAL (v1): La única que no devuelve el error del robot
-  const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  // RUTA REGIONALIZADA EXACTA: Apuntamos al galpón us-central1 donde usted tiene la cuota ilimitada.
+  const API_URL = `https://us-central1-aiplatform.googleapis.com/v1/projects/gen-lang-client-0647716627/locations/us-central1/publishers/google/models/gemini-1.5-flash:streamGenerateContent?key=${API_KEY}`;
 
   try {
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `Genera el JSON musical de la canción: ${query}. Responde SOLO el objeto JSON.` }] }]
+        contents: [{ parts: [{ text: `Actúa como experto musical. Genera el JSON de la canción: ${query}. Responde SOLO el JSON puro.` }] }]
       })
     });
 
-    const data = await response.json();
-
-    if (data.error) {
-      // Si esto falla, el mensaje será un JSON claro, no una página HTML
-      throw new Error(`Google API (${data.error.code}): ${data.error.message}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      return res.status(response.status).json({ error: `Fallo de Válvula (${response.status}): ${errorText.substring(0, 150)}` });
     }
 
-    const txt = data.candidates[0].content.parts[0].text;
-    const jsonMatch = txt.match(/\{[\s\S]*\}/);
+    const data = await response.json();
     
-    if (!jsonMatch) throw new Error("La IA respondió pero no envió datos limpios.");
+    // Procesamos la respuesta que viene de la ruta regional (Vertex)
+    const txt = data[0].candidates[0].content.parts[0].text;
+    const jsonMatch = txt.match(/\{[\s\S]*\}/);
     
     return res.status(200).json(JSON.parse(jsonMatch[0]));
 
