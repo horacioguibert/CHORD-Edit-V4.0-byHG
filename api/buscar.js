@@ -4,27 +4,22 @@ export default async function handler(req, res) {
   const { query } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY; 
 
-  // PUNTO DE ENTRADA GLOBAL: Esta URL ignora las restricciones de región us-central1
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  // RUTA REGIONALIZADA: Apuntamos directamente a donde tu cuota es "Ilimitada"
+  const API_URL = `https://us-central1-generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
   try {
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ 
-          parts: [{ text: `Actúa como experto musical. Genera el JSON (titulo, artista, compas, capo, secciones) de la canción: ${query}. Responde ÚNICAMENTE el objeto JSON puro.` }] 
-        }]
+        contents: [{ parts: [{ text: `Genera el JSON de la canción: ${query}. Responde SOLO el JSON.` }] }]
       })
     });
 
     const data = await response.json();
 
     if (data.error) {
-      // Si el error persiste, nos dirá exactamente por qué región está rebotando
-      return res.status(data.error.code || 500).json({ 
-        error: `Google API (${data.error.code}): ${data.error.message}` 
-      });
+      return res.status(data.error.code || 500).json({ error: `Error regional (${data.error.code}): ${data.error.message}` });
     }
 
     const txt = data.candidates[0].content.parts[0].text;
