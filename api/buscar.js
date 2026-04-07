@@ -6,11 +6,11 @@ export default async function handler(req, res) {
 
   const API_KEY = process.env.GEMINI_API_KEY; 
   
-  // AJUSTE DE PRECISIÓN: Volvemos a v1beta que es la ruta que tu cuenta está solicitando
+  // RUTA TÉCNICA DEFINITIVA: Forzamos la v1beta con la estructura que tu cuenta reconoce
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
-  const prompt = `Actúa como un experto en música. Proporciona el cifrado de: "${query}". 
-  Responde ÚNICAMENTE con un JSON válido:
+  const prompt = `Actúa como un experto en música. Proporciona el cifrado de la canción: "${query}". 
+  Responde ÚNICAMENTE con un JSON válido, sin texto extra:
   {
     "titulo": "Nombre",
     "artista": "Artista",
@@ -37,18 +37,21 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
+    // Diagnóstico en tiempo real si Google vuelve a rechazar
     if (data.error) {
-      // Si vuelve a fallar, este mensaje nos dará el último detalle técnico
-      throw new Error(`Google dice: ${data.error.message} (Código ${data.error.code})`);
+      throw new Error(`Google indica: ${data.error.message} (Código ${data.error.code})`);
     }
 
+    // Extracción segura del JSON (elimina posibles comentarios de la IA)
     let txt = data.candidates[0].content.parts[0].text;
     const jsonMatch = txt.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("La IA no devolvió JSON");
+    if (!jsonMatch) throw new Error("La respuesta de la IA no es un JSON válido");
     
-    return res.status(200).json(JSON.parse(jsonMatch[0]));
+    const cancionFinal = JSON.parse(jsonMatch[0]);
+    return res.status(200).json(cancionFinal);
 
   } catch (e) {
+    console.error("Falla de Mantenimiento:", e.message);
     return res.status(500).json({ error: "Error en el motor: " + e.message });
   }
 }
