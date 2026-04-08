@@ -34,8 +34,7 @@ Maximum 4 sections, 8 bars each. Real chords only.`;
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 4000,
-            responseMimeType: "application/json"
+            maxOutputTokens: 4000
           }
         })
       });
