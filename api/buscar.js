@@ -1,36 +1,49 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido" });
-  
-  const { query } = req.body;
-  const API_KEY = process.env.GEMINI_API_KEY; 
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  // RUTA ESTÁNDAR DE PRODUCCIÓN FINAL
-  const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  const { query } = req.body;
+  if (!query) return res.status(400).json({ error: "Falta el parámetro query" });
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
   try {
-    const response = await fetch(API_URL, {
+    const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ 
-          parts: [{ text: `Actúa como experto musical. Genera el JSON (titulo, artista, compas, capo, secciones) de la canción: ${query}. Responde ÚNICAMENTE el objeto JSON puro.` }] 
-        }]
+        contents: [{
+          parts: [{
+            text: `Cifrado completo de la canción "${query}". Devolvé SOLO este JSON sin texto adicional, sin backticks, sin comentarios:
+{"titulo":"X","artista":"X","compas":"4/4","secciones":[{"label":"ESTROFA","compases":[{"beats":[{"chord":"G","note":""}],"lyric":"letra"}]}]}
+Labels válidos: INTRO ESTROFA ESTRIBILLO PUENTE OUTRO. Acordes reales correctos. Máximo 4 secciones, 8 compases por sección.`
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 4000
+        }
       })
     });
 
     const data = await response.json();
+    if (data.error) return res.status(500).json({ error: `Google API (${data.error.code}): ${data.error.message}` });
 
-    if (data.error) {
-      // Si esto falla, el mensaje será el oficial de Google para su cuenta
-      return res.status(data.error.code || 500).json({ error: `Google API (${data.error.code}): ${data.error.message}` });
+    const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const match = txt.match(/\{[\s\S]*\}/);
+    if (!match) return res.status(500).json({ error: "Respuesta inválida de la IA" });
+
+    // balance de llaves para asegurar JSON completo
+    let depth = 0, end = 0;
+    for (let i = 0; i < match[0].length; i++) {
+      if (match[0][i] === "{") depth++;
+      if (match[0][i] === "}") depth--;
+      if (depth === 0) { end = i; break; }
     }
-
-    const txt = data.candidates[0].content.parts[0].text;
-    const jsonMatch = txt.match(/\{[\s\S]*\}/);
-    
-    return res.status(200).json(JSON.parse(jsonMatch[0]));
+    const json = JSON.parse(match[0].substring(0, end + 1));
+    return res.status(200).json(json);
 
   } catch (e) {
-    return res.status(500).json({ error: "Falla de Motor: " + e.message });
+    return res.status(500).json({ error: e.message });
   }
 }
