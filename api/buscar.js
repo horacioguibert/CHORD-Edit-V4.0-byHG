@@ -44,6 +44,93 @@ Maximum 4 sections, 8 bars each. Real chords only.`;
       if (data.error) { lastError = `${modelo}: ${data.error.message}`; continue; }
 
       const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      lastRawText = txt.substring(0, 500);
+
+      let clean = txt.replace(/```json/gi,"").replace(/```/g,"").trim();
+      const first = clean.indexOf("{");
+      const last = clean.lastIndexOf("}");
+      if (first === -1 || last === -1) { lastError = `${modelo}: no JSON. Raw: ${lastRawText}`; continue; }
+      clean = clean.substring(first, last + 1);
+
+      let json;
+      try {
+        json = JSON.parse(clean);
+      } catch(e) {
+        // devolver el texto crudo para diagnosticar
+        return res.status(200).json({
+          _debug: true,
+          _modelo: modelo,
+          _parseError: e.message,
+          _rawText: txt.substring(0, 1000)
+        });
+      }
+
+      if (!json.secciones || !json.titulo) {
+        return res.status(200).json({
+          _debug: true,
+          _modelo: modelo,
+          _issue: "missing fields",
+          _keys: Object.keys(json),
+          _rawText: txt.substring(0, 500)
+        });
+      }
+
+      return res.status(200).json(json);
+
+    } catch (e) {
+      lastError = `${modelo}: ${e.message}`;
+      continue;
+    }
+  }
+
+  return res.status(500).json({ error: `No model worked. Last: ${lastError}`, raw: lastRawText });
+}
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const { query } = req.body;
+  if (!query) return res.status(400).json({ error: "Falta el parámetro query" });
+
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  const modelos = [
+    "gemini-2.0-flash-exp",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+    "gemini-pro",
+  ];
+
+  const prompt = `Generate a chord chart JSON for the song "${query}".
+Return ONLY a valid JSON object. No markdown, no backticks, no explanation.
+Use this exact structure:
+{"titulo":"Song Name","artista":"Artist Name","compas":"4/4","secciones":[{"label":"VERSE","compases":[{"beats":[{"chord":"G","note":""}],"lyric":"lyric line"}]}]}
+Valid labels: INTRO ESTROFA ESTRIBILLO PUENTE OUTRO
+Maximum 4 sections, 8 bars each. Real chords only.`;
+
+  let lastError = "";
+  let lastRawText = "";
+
+  for (const modelo of modelos) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`;
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 4000,
+            responseMimeType: "application/json"
+          }
+        })
+      });
+
+      const data = await response.json();
+      if (data.error) { lastError = `${modelo}: ${data.error.message}`; continue; }
+
+      const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
       lastRawText = txt.substring(0, 200);
 
       // limpiar el texto agresivamente
